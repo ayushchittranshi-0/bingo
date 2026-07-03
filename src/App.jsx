@@ -14,36 +14,25 @@ function shuffledNumbers(count) {
   return arr
 }
 
-// Indices on `board` whose value has been called.
-function markedIndexSet(board, called) {
-  const s = new Set()
-  for (let i = 0; i < board.length; i++) if (called.has(board[i])) s.add(i)
-  return s
-}
-
-// Return every completed line as an array of cell indices
-// (full rows, full columns, and the two diagonals).
-function getCompletedLines(size, marked) {
-  const isMarked = (idx) => marked.has(idx)
+// All winnable lines (rows, columns, both diagonals).
+function getLines(size) {
   const lines = []
-
   for (let r = 0; r < size; r++) {
     const cells = []
     for (let c = 0; c < size; c++) cells.push(r * size + c)
-    if (cells.every(isMarked)) lines.push(cells)
+    lines.push(cells)
   }
   for (let c = 0; c < size; c++) {
     const cells = []
     for (let r = 0; r < size; r++) cells.push(r * size + c)
-    if (cells.every(isMarked)) lines.push(cells)
+    lines.push(cells)
   }
   const d1 = []
   for (let i = 0; i < size; i++) d1.push(i * size + i)
-  if (d1.every(isMarked)) lines.push(d1)
+  lines.push(d1)
   const d2 = []
   for (let i = 0; i < size; i++) d2.push(i * size + (size - 1 - i))
-  if (d2.every(isMarked)) lines.push(d2)
-
+  lines.push(d2)
   return lines
 }
 
@@ -54,20 +43,16 @@ function progressLetters(size) {
   return Array.from({ length: size }, (_, i) => word[i % word.length])
 }
 
-function makeBoards(count, size) {
-  return Array.from({ length: count }, () => shuffledNumbers(size * size))
-}
-
-// A single grid: draws a stroke through each completed line and
-// shades winning cells. Purely presentational + geometry measurement.
-function Board({ size, numbers, marked, completedLines, ownerClass, onCellClick, cellDisabled }) {
+// Your board. Marks are coloured by whoever called the number; a completed
+// line is stroked in green. Purely presentational + geometry measurement.
+function Board({ size, numbers, callers, completedLines, onCellClick, disabled }) {
   const boardRef = useRef(null)
   const cellRefs = useRef([])
   const [segments, setSegments] = useState([])
 
-  const winningCells = useMemo(() => {
+  const inLineCells = useMemo(() => {
     const s = new Set()
-    for (const line of completedLines) for (const idx of line) s.add(idx)
+    for (const cells of completedLines) for (const idx of cells) s.add(idx)
     return s
   }, [completedLines])
 
@@ -103,15 +88,14 @@ function Board({ size, numbers, marked, completedLines, ownerClass, onCellClick,
     <div className="board-wrap">
       <div className="board" ref={boardRef} style={{ '--size': size }}>
         {numbers.map((num, index) => {
-          const isMarked = marked.has(index)
-          const isWinning = winningCells.has(index)
+          const caller = callers[index]
           return (
             <button
               key={index}
               ref={(el) => { cellRefs.current[index] = el }}
-              className={`cell ${isMarked ? ownerClass : ''} ${isWinning ? 'winning' : ''}`}
+              className={`cell ${caller ? `p${caller}` : ''} ${inLineCells.has(index) ? 'in-line' : ''}`}
               onClick={() => onCellClick(index)}
-              disabled={cellDisabled(index, isMarked)}
+              disabled={disabled || caller != null}
             >
               {num}
             </button>
@@ -128,189 +112,172 @@ function Board({ size, numbers, marked, completedLines, ownerClass, onCellClick,
 }
 
 export default function App() {
+  const [phase, setPhase] = useState('setup')   // 'setup' | 'playing'
   const [size, setSize] = useState(DEFAULT_SIZE)
-  const [playerCount, setPlayerCount] = useState(2)
-  const [boards, setBoards] = useState(() => makeBoards(2, DEFAULT_SIZE))
-  const [called, setCalled] = useState(() => new Set())   // called number values
-  const [currentPlayer, setCurrentPlayer] = useState(1)
-  const [moves, setMoves] = useState([])                  // { player, number }
+  const [playerCount, setPlayerCount] = useState(2) // 2..4
+  const [myPlayer, setMyPlayer] = useState(1)   // 1..playerCount
 
-  const resetPlay = useCallback((count = playerCount, nextSize = size) => {
-    setBoards(makeBoards(count, nextSize))
-    setCalled(new Set())
-    setCurrentPlayer(1)
-    setMoves([])
-  }, [playerCount, size])
+  const [numbers, setNumbers] = useState([])
+  const [callers, setCallers] = useState({})    // cell index -> player who called (1|2)
+  const [currentTurn, setCurrentTurn] = useState(1) // Player 1 always calls first
+  const [calls, setCalls] = useState([])        // { player, number }
 
-  const newGame = useCallback(() => resetPlay(), [resetPlay])
+  const lines = useMemo(() => getLines(size), [size])
 
-  const handleSizeChange = (nextSize) => {
-    setSize(nextSize)
-    resetPlay(playerCount, nextSize)
-  }
   const handlePlayerCountChange = (count) => {
     setPlayerCount(count)
-    resetPlay(count, size)
+    if (myPlayer > count) setMyPlayer(1)
   }
 
-  // Completed lines per board, derived from the shared called-number set.
-  const boardLines = useMemo(
-    () => boards.map((b) => getCompletedLines(size, markedIndexSet(b, called))),
-    [boards, size, called],
+  const startGame = () => {
+    setNumbers(shuffledNumbers(size * size))
+    setCallers({})
+    setCurrentTurn(1)
+    setCalls([])
+    setPhase('playing')
+  }
+
+  const markedSet = useMemo(
+    () => new Set(Object.keys(callers).map(Number)),
+    [callers],
   )
-  const lineCounts = boardLines.map((l) => l.length)
 
-  // Outcome derived from state — captures a simultaneous draw naturally,
-  // since a single called number is marked on every board at once.
-  const result = useMemo(() => {
-    if (playerCount === 1) {
-      return lineCounts[0] >= size ? { type: 'win', player: 1 } : null
-    }
-    const p1done = lineCounts[0] >= size
-    const p2done = lineCounts[1] >= size
-    if (p1done && p2done) return { type: 'draw' }
-    if (p1done) return { type: 'win', player: 1 }
-    if (p2done) return { type: 'win', player: 2 }
-    return null
-  }, [playerCount, lineCounts, size])
+  const completedLines = useMemo(
+    () => lines.filter((cells) => cells.every((i) => markedSet.has(i))),
+    [lines, markedSet],
+  )
 
-  const gameOver = result != null
+  const bingo = completedLines.length >= size
+  const isMyTurn = currentTurn === myPlayer
+  const lastCall = calls.length ? calls[calls.length - 1] : null
 
-  const callNumber = (player, index) => {
-    if (gameOver) return
-    if (playerCount === 1) {
-      // Solo: toggle the number on/off.
-      const value = boards[0][index]
-      setCalled((prev) => {
-        const next = new Set(prev)
-        if (next.has(value)) next.delete(value)
-        else next.add(value)
-        return next
-      })
-      return
-    }
-    // Two players: only the active player may call, from their own board.
-    if (player !== currentPlayer) return
-    const value = boards[player - 1][index]
-    if (called.has(value)) return
-    setCalled((prev) => new Set(prev).add(value))
-    setMoves((prev) => [...prev, { player, number: value }])
-    setCurrentPlayer(player === 1 ? 2 : 1)
+  const callNumber = (index) => {
+    if (bingo || callers[index] != null) return
+    const player = currentTurn
+    const number = numbers[index]
+    setCallers((prev) => ({ ...prev, [index]: player }))
+    setCalls((prev) => [...prev, { player, number }])
+    setCurrentTurn((player % playerCount) + 1) // rotate 1 -> 2 -> .. -> N -> 1
   }
 
   const letters = useMemo(() => progressLetters(size), [size])
-  const lastMove = moves.length ? moves[moves.length - 1] : null
 
-  const renderColumn = (boardIndex) => {
-    const player = boardIndex + 1
-    const numbers = boards[boardIndex]
-    const marked = markedIndexSet(numbers, called)
-    const ownerClass = playerCount === 1 ? 'marked' : `p${player}`
-    const active = playerCount === 1 || currentPlayer === player
+  // ---------- Setup screen ----------
+  if (phase === 'setup') {
     return (
-      <div className="board-col" key={boardIndex}>
-        {playerCount === 2 && (
-          <div className={`board-label p${player} ${active && !gameOver ? 'active' : ''}`}>
-            Player {player}
+      <div className="app">
+        <header className="header">
+          <h1 className="title">B<span>I</span>N<span>G</span>O</h1>
+          <p className="subtitle">Offline 2-player — each player uses their own board.</p>
+        </header>
+
+        <div className="setup">
+          <label className="control-label wide">
+            Grid size
+            <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
+              {SIZES.map((s) => (
+                <option key={s} value={s}>{s} × {s}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="control-label wide">
+            Number of players
+            <select value={playerCount} onChange={(e) => handlePlayerCountChange(Number(e.target.value))}>
+              {[2, 3, 4].map((n) => (
+                <option key={n} value={n}>{n} players</option>
+              ))}
+            </select>
+          </label>
+
+          <div className="control-label wide">
+            You are
+            <div className="choice">
+              {Array.from({ length: playerCount }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  className={`choice-btn p${p} ${myPlayer === p ? 'selected' : ''}`}
+                  onClick={() => setMyPlayer(p)}
+                >
+                  Player {p}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-        <div className="progress">
-          {letters.map((ch, i) => (
-            <span key={i} className={`progress-letter ${i < lineCounts[boardIndex] ? 'lit' : ''}`}>
-              {ch}
-            </span>
-          ))}
-          <span className="progress-count">{lineCounts[boardIndex]} / {size} lines</span>
+
+          <button className="new-game big" onClick={startGame}>Start Game</button>
+
+          <p className="setup-hint">
+            Player 1 calls first. On <b>your</b> turn, tap a number on your board to call it.
+            On your opponent&apos;s turn, tap the number they call out. Complete {size} lines to shout <b>BINGO!</b>
+          </p>
         </div>
-        <Board
-          size={size}
-          numbers={numbers}
-          marked={marked}
-          completedLines={boardLines[boardIndex]}
-          ownerClass={ownerClass}
-          onCellClick={(idx) => callNumber(player, idx)}
-          cellDisabled={(idx, isMarked) =>
-            gameOver || (playerCount === 2 && (!active || isMarked))
-          }
-        />
       </div>
     )
   }
 
+  // ---------- Playing screen ----------
   return (
     <div className="app">
       <header className="header">
         <h1 className="title">B<span>I</span>N<span>G</span>O</h1>
-        <p className="subtitle">Complete {size} lines on a {size}×{size} grid to win!</p>
+        <p className="subtitle">
+          You are <span className={`you-tag p${myPlayer}`}>Player {myPlayer}</span> · complete {size} lines
+        </p>
       </header>
 
       <div className="controls">
-        <label className="control-label">
-          Grid size
-          <select value={size} onChange={(e) => handleSizeChange(Number(e.target.value))}>
-            {SIZES.map((s) => (
-              <option key={s} value={s}>{s} × {s}</option>
-            ))}
-          </select>
-        </label>
-        <label className="control-label">
-          Players
-          <select value={playerCount} onChange={(e) => handlePlayerCountChange(Number(e.target.value))}>
-            <option value={1}>1 Player</option>
-            <option value={2}>2 Players</option>
-          </select>
-        </label>
-        <button className="new-game" onClick={newGame}>New Game</button>
+        <button className="new-game ghost" onClick={() => setPhase('setup')}>← New Game</button>
       </div>
 
-      {playerCount === 2 && (
-        <div className="turn-panel">
-          <div className="turn-status">
-            {gameOver ? (
-              result.type === 'draw' ? (
-                <span className="turn-draw">🤝 It&apos;s a draw!</span>
-              ) : (
-                <span className="turn-win">🏆 Player {result.player} wins!</span>
-              )
-            ) : (
-              <>
-                {lastMove && (
-                  <span className="last-move">
-                    Player {lastMove.player} chose <b>{lastMove.number}</b>
-                  </span>
-                )}
-                <span className={`whose-turn p${currentPlayer}`}>
-                  Player {currentPlayer}&apos;s turn — pick a number
-                </span>
-              </>
+      <div className="turn-status">
+        {bingo ? (
+          <span className="turn-win">🎉 BINGO! You completed {size} lines!</span>
+        ) : (
+          <>
+            {lastCall && (
+              <span className="last-move">
+                {lastCall.player === myPlayer ? 'You' : `Player ${lastCall.player}`} called <b>{lastCall.number}</b>
+              </span>
             )}
-          </div>
-        </div>
-      )}
-
-      <div className={`boards ${playerCount === 2 ? 'two' : ''}`}>
-        {boards.map((_, i) => renderColumn(i))}
+            <span className={`whose-turn p${currentTurn}`}>
+              {isMyTurn
+                ? `Your turn (Player ${myPlayer}) — call a number`
+                : `Player ${currentTurn}'s turn — tap their called number`}
+            </span>
+          </>
+        )}
       </div>
 
-      {gameOver && (
+      <div className="progress">
+        {letters.map((ch, i) => (
+          <span key={i} className={`progress-letter ${i < completedLines.length ? 'lit' : ''}`}>
+            {ch}
+          </span>
+        ))}
+        <span className="progress-count">{completedLines.length} / {size} lines</span>
+      </div>
+
+      <div className="boards">
+        <div className="board-col">
+          <Board
+            size={size}
+            numbers={numbers}
+            callers={callers}
+            completedLines={completedLines}
+            onCellClick={callNumber}
+            disabled={bingo}
+          />
+        </div>
+      </div>
+
+      {bingo && (
         <div className="win-overlay" role="dialog" aria-live="assertive">
           <div className="win-card">
-            {result.type === 'draw' ? (
-              <>
-                <div className="win-bingo draw">DRAW!</div>
-                <div className="win-text">🤝 It&apos;s a tie!</div>
-                <p className="win-sub">Both players completed {size} lines at once.</p>
-              </>
-            ) : (
-              <>
-                <div className="win-bingo">BINGO!</div>
-                <div className="win-text">
-                  {playerCount === 2 ? `🎉 Player ${result.player} Wins! 🎉` : '🎉 Winner! 🎉'}
-                </div>
-                <p className="win-sub">Completed {size} lines.</p>
-              </>
-            )}
-            <button className="new-game" onClick={newGame}>Play Again</button>
+            <div className="win-bingo">BINGO!</div>
+            <div className="win-text">🎉 You got Bingo! 🎉</div>
+            <p className="win-sub">You completed {size} lines. Call it out — first to bingo wins!</p>
+            <button className="new-game" onClick={() => setPhase('setup')}>New Game</button>
           </div>
         </div>
       )}

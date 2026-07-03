@@ -12,6 +12,10 @@
   --p1-2: #8fb8ff;
   --p2: #ff4d6d;
   --p2-2: #ff8fa3;
+  --p3: #ff9e40;
+  --p3-2: #ffc487;
+  --p4: #a06bff;
+  --p4-2: #c9a3ff;
   --text: #eef1ff;
   --muted: #9aa3d0;
 }
@@ -92,13 +96,56 @@ select {
 .new-game:hover { transform: translateY(-2px); }
 .new-game:active { transform: translateY(0); }
 
-/* ---- Two-player turn panel ---- */
-.turn-panel {
+/* ---- Setup screen ---- */
+.setup {
+  max-width: 420px;
+  margin: 0 auto;
   display: flex;
-  justify-content: center;
-  margin-bottom: 18px;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--bg-2);
+  border: 1px solid #3a4380;
+  border-radius: 18px;
+  padding: 28px;
 }
+.control-label.wide { width: 100%; text-align: left; }
+.control-label.wide select { width: 100%; }
 
+.choice { display: flex; gap: 12px; margin-top: 4px; }
+.choice-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid #3a4380;
+  background: var(--cell);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.choice-btn.p1.selected { border-color: var(--p1); background: rgba(77, 139, 255, 0.2); color: var(--p1-2); }
+.choice-btn.p2.selected { border-color: var(--p2); background: rgba(255, 77, 109, 0.2); color: var(--p2-2); }
+.choice-btn.p3.selected { border-color: var(--p3); background: rgba(255, 158, 64, 0.2); color: var(--p3-2); }
+.choice-btn.p4.selected { border-color: var(--p4); background: rgba(160, 107, 255, 0.2); color: var(--p4-2); }
+
+.new-game.big { font-size: 17px; padding: 14px; }
+.new-game.ghost {
+  background: transparent;
+  border: 1px solid #3a4380;
+  color: var(--muted);
+  box-shadow: none;
+  font-weight: 600;
+}
+.setup-hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; text-align: left; }
+
+.you-tag { padding: 1px 8px; border-radius: 6px; font-weight: 700; }
+.you-tag.p1 { background: rgba(77, 139, 255, 0.22); color: var(--p1-2); }
+.you-tag.p2 { background: rgba(255, 77, 109, 0.22); color: var(--p2-2); }
+.you-tag.p3 { background: rgba(255, 158, 64, 0.22); color: var(--p3-2); }
+.you-tag.p4 { background: rgba(160, 107, 255, 0.22); color: var(--p4-2); }
+
+/* ---- Turn status ---- */
 .turn-status {
   display: flex;
   gap: 12px;
@@ -107,6 +154,7 @@ select {
   justify-content: center;
   min-height: 24px;
   font-size: 15px;
+  margin-bottom: 14px;
 }
 .last-move { color: var(--muted); }
 .last-move b { color: var(--text); }
@@ -114,38 +162,14 @@ select {
 .whose-turn { font-weight: 700; }
 .whose-turn.p1 { color: var(--p1-2); }
 .whose-turn.p2 { color: var(--p2-2); }
+.whose-turn.p3 { color: var(--p3-2); }
+.whose-turn.p4 { color: var(--p4-2); }
 .turn-win { font-weight: 800; font-size: 18px; color: var(--win-2); }
 .turn-draw { font-weight: 800; font-size: 18px; color: var(--accent); }
 
-/* ---- Board columns (two side-by-side in 2-player) ---- */
-.boards {
-  display: flex;
-  justify-content: center;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-.board-col {
-  flex: 1 1 300px;
-  max-width: 420px;
-  min-width: 240px;
-}
-
-.board-label {
-  font-weight: 800;
-  font-size: 17px;
-  padding: 6px 0;
-  margin-bottom: 8px;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-}
-.board-label.p1 { color: var(--p1-2); }
-.board-label.p2 { color: var(--p2-2); }
-.board-label.active {
-  transform: scale(1.03);
-}
-.board-label.p1.active { border-color: var(--p1); box-shadow: 0 0 16px rgba(77, 139, 255, 0.45); }
-.board-label.p2.active { border-color: var(--p2); box-shadow: 0 0 16px rgba(255, 77, 109, 0.45); }
+/* ---- Board layout ---- */
+.boards { display: flex; justify-content: center; }
+.board-col { width: 100%; max-width: 460px; }
 
 .progress {
   display: flex;
@@ -235,13 +259,7 @@ select {
 .cell:hover:not(:disabled) { background: var(--cell-hover); transform: translateY(-1px); }
 .cell:disabled { cursor: default; }
 
-.cell.marked {
-  background: linear-gradient(135deg, var(--marked), var(--marked-2));
-  color: #fff;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
-}
-
-/* Two-player: colour each cell by the player who claimed it. */
+/* Colour each cell by the player who marked it. */
 .cell.p1 {
   background: linear-gradient(135deg, var(--p1), var(--p1-2));
   color: #04122e;
@@ -252,21 +270,21 @@ select {
   color: #2e0410;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
-
-/* A cell that is part of a completed line gets a green ring. */
-.cell.winning {
-  box-shadow: inset 0 0 0 3px var(--win-2), 0 0 14px rgba(22, 199, 132, 0.6);
+.cell.p3 {
+  background: linear-gradient(135deg, var(--p3), var(--p3-2));
+  color: #2e1a04;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+.cell.p4 {
+  background: linear-gradient(135deg, var(--p4), var(--p4-2));
+  color: #1a0430;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
-/* Solo: a marked cell in a completed line turns fully green. */
-.cell.marked.winning {
-  background: linear-gradient(135deg, var(--win), var(--win-2));
-  color: #04231a;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45),
-    0 0 14px rgba(22, 199, 132, 0.55);
+/* A cell that is part of a completed line gets a bright ring. */
+.cell.in-line {
+  box-shadow: inset 0 0 0 3px var(--accent), 0 0 12px rgba(255, 209, 102, 0.55);
 }
-
-.board-won .cell { opacity: 0.85; }
 
 .win-overlay {
   position: fixed;
