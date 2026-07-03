@@ -156,8 +156,20 @@ export default function App() {
     const player = currentTurn
     const number = numbers[index]
     setCallers((prev) => ({ ...prev, [index]: player }))
-    setCalls((prev) => [...prev, { player, number }])
+    setCalls((prev) => [...prev, { player, number, index }])
     setCurrentTurn((player % playerCount) + 1) // rotate 1 -> 2 -> .. -> N -> 1
+  }
+
+  const undo = () => {
+    if (calls.length === 0) return
+    const last = calls[calls.length - 1]
+    setCallers((prev) => {
+      const next = { ...prev }
+      delete next[last.index]
+      return next
+    })
+    setCalls((prev) => prev.slice(0, -1))
+    setCurrentTurn(last.player) // the last caller gets their turn back
   }
 
   const letters = useMemo(() => progressLetters(size), [size])
@@ -228,6 +240,9 @@ export default function App() {
 
       <div className="controls">
         <button className="new-game ghost" onClick={() => setPhase('setup')}>← New Game</button>
+        <button className="new-game ghost" onClick={undo} disabled={calls.length === 0}>
+          ↶ Undo
+        </button>
       </div>
 
       <div className="turn-status">

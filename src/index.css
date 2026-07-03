@@ -93,8 +93,9 @@ select {
   transition: transform 0.1s ease, box-shadow 0.2s ease;
   box-shadow: 0 6px 18px rgba(255, 183, 3, 0.35);
 }
-.new-game:hover { transform: translateY(-2px); }
-.new-game:active { transform: translateY(0); }
+.new-game:hover:not(:disabled) { transform: translateY(-2px); }
+.new-game:active:not(:disabled) { transform: translateY(0); }
+.new-game:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 
 /* ---- Setup screen ---- */
 .setup {
