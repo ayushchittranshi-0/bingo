@@ -8,6 +8,10 @@
   --win: #16c784;
   --win-2: #4ff0b7;
   --accent: #ffd166;
+  --p1: #4d8bff;
+  --p1-2: #8fb8ff;
+  --p2: #ff4d6d;
+  --p2-2: #ff8fa3;
   --text: #eef1ff;
   --muted: #9aa3d0;
 }
@@ -87,6 +91,61 @@ select {
 }
 .new-game:hover { transform: translateY(-2px); }
 .new-game:active { transform: translateY(0); }
+
+/* ---- Two-player turn panel ---- */
+.turn-panel {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.turn-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 24px;
+  font-size: 15px;
+}
+.last-move { color: var(--muted); }
+.last-move b { color: var(--text); }
+
+.whose-turn { font-weight: 700; }
+.whose-turn.p1 { color: var(--p1-2); }
+.whose-turn.p2 { color: var(--p2-2); }
+.turn-win { font-weight: 800; font-size: 18px; color: var(--win-2); }
+.turn-draw { font-weight: 800; font-size: 18px; color: var(--accent); }
+
+/* ---- Board columns (two side-by-side in 2-player) ---- */
+.boards {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.board-col {
+  flex: 1 1 300px;
+  max-width: 420px;
+  min-width: 240px;
+}
+
+.board-label {
+  font-weight: 800;
+  font-size: 17px;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+.board-label.p1 { color: var(--p1-2); }
+.board-label.p2 { color: var(--p2-2); }
+.board-label.active {
+  transform: scale(1.03);
+}
+.board-label.p1.active { border-color: var(--p1); box-shadow: 0 0 16px rgba(77, 139, 255, 0.45); }
+.board-label.p2.active { border-color: var(--p2); box-shadow: 0 0 16px rgba(255, 77, 109, 0.45); }
 
 .progress {
   display: flex;
@@ -182,7 +241,24 @@ select {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
-/* A marked cell that is part of a completed line turns green. */
+/* Two-player: colour each cell by the player who claimed it. */
+.cell.p1 {
+  background: linear-gradient(135deg, var(--p1), var(--p1-2));
+  color: #04122e;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+.cell.p2 {
+  background: linear-gradient(135deg, var(--p2), var(--p2-2));
+  color: #2e0410;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* A cell that is part of a completed line gets a green ring. */
+.cell.winning {
+  box-shadow: inset 0 0 0 3px var(--win-2), 0 0 14px rgba(22, 199, 132, 0.6);
+}
+
+/* Solo: a marked cell in a completed line turns fully green. */
 .cell.marked.winning {
   background: linear-gradient(135deg, var(--win), var(--win-2));
   color: #04231a;
@@ -216,6 +292,12 @@ select {
   font-weight: 900;
   letter-spacing: 6px;
   background: linear-gradient(90deg, var(--accent), var(--marked-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.win-bingo.draw {
+  background: linear-gradient(90deg, var(--accent), #ff9e64);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
