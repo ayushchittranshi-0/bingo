@@ -1,0 +1,230 @@
+:root {
+  --bg: #0f1226;
+  --bg-2: #1a1f3d;
+  --cell: #232a52;
+  --cell-hover: #2e3872;
+  --marked: #ff4d6d;
+  --marked-2: #ff8fa3;
+  --win: #16c784;
+  --win-2: #4ff0b7;
+  --accent: #ffd166;
+  --text: #eef1ff;
+  --muted: #9aa3d0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 50% -10%, var(--bg-2), var(--bg));
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  text-align: center;
+}
+
+.header { margin-bottom: 20px; }
+
+.title {
+  font-size: clamp(40px, 10vw, 72px);
+  font-weight: 900;
+  letter-spacing: 8px;
+  margin: 0;
+  background: linear-gradient(90deg, var(--accent), var(--marked-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.title span { color: transparent; }
+
+.subtitle { color: var(--muted); margin: 8px 0 0; font-size: 15px; }
+
+.controls {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.control-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: left;
+}
+
+select {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #3a4380;
+  background: var(--cell);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.new-game {
+  padding: 11px 22px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #ffb703);
+  color: #2a1a00;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 18px rgba(255, 183, 3, 0.35);
+}
+.new-game:hover { transform: translateY(-2px); }
+.new-game:active { transform: translateY(0); }
+
+.progress {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.progress-letter {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-weight: 800;
+  background: var(--cell);
+  color: var(--muted);
+  border: 1px solid #3a4380;
+  transition: all 0.25s ease;
+}
+.progress-letter.lit {
+  background: linear-gradient(135deg, var(--marked), var(--marked-2));
+  color: #fff;
+  border-color: transparent;
+  transform: scale(1.08);
+  box-shadow: 0 4px 14px rgba(255, 77, 109, 0.5);
+}
+
+.progress-count {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.board-wrap {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--size), 1fr);
+  gap: clamp(4px, 1.5vw, 10px);
+  margin: 0 auto;
+}
+
+/* SVG overlay that draws a stroke through each completed line. */
+.lines-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bingo-line {
+  stroke: var(--win-2);
+  stroke-width: 6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(79, 240, 183, 0.9));
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: draw-line 0.45s ease forwards;
+}
+
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+
+.cell {
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: clamp(6px, 1.6vw, 12px);
+  background: var(--cell);
+  color: var(--text);
+  font-size: clamp(13px, 3.2vw, 22px);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+  display: grid;
+  place-items: center;
+}
+.cell:hover:not(:disabled) { background: var(--cell-hover); transform: translateY(-1px); }
+.cell:disabled { cursor: default; }
+
+.cell.marked {
+  background: linear-gradient(135deg, var(--marked), var(--marked-2));
+  color: #fff;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* A marked cell that is part of a completed line turns green. */
+.cell.marked.winning {
+  background: linear-gradient(135deg, var(--win), var(--win-2));
+  color: #04231a;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45),
+    0 0 14px rgba(22, 199, 132, 0.55);
+}
+
+.board-won .cell { opacity: 0.85; }
+
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 24, 0.72);
+  display: grid;
+  place-items: center;
+  animation: fade 0.3s ease;
+  z-index: 10;
+}
+
+.win-card {
+  background: linear-gradient(160deg, var(--bg-2), var(--cell));
+  border: 1px solid #3a4380;
+  border-radius: 20px;
+  padding: 40px 48px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: pop 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.win-bingo {
+  font-size: 64px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--marked-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.win-text { font-size: 28px; font-weight: 800; margin-top: 6px; }
+.win-sub { color: var(--muted); margin: 10px 0 22px; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
